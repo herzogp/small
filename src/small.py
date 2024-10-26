@@ -127,6 +127,9 @@ def small():
     target_prepared = did_build_target(cwd, args.base_name)
     if target_prepared:
         print(f"target '{args.base_name}' is prepared")
+    else:
+        os._exit(1)
+    print("Did not exit")
 
 
 if __name__ == '__main__':
