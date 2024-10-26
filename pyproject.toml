@@ -1,0 +1,35 @@
+[project]
+name = "small"
+version = "0.1.0"
+description = "Small Python project creator"
+license = {file = "LICENSE"}
+readme = "README.md"
+keywords = ["python", "project", "template", "generation"]
+
+[tool.black]
+verbose = true
+
+[tool.mypy]
+files = "src/*.py"
+
+[tool.pylint.messages_control]
+# disable = "C0114,C0115,C0116"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "Cython", "cffi"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+
+# addx 10 17
+addx = "add:add"
+
+small = "small:small"
+
+# [tool.pydeploy]
+# exclude_libs = []
+
+
