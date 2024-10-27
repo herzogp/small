@@ -3,7 +3,8 @@ import os
 import sys
 from pathlib import PurePath
 
-TEMPLATE_PATH_DIR = "/home/pherzog/Projects/Python/small/templates/DEFAULT"
+TEMPLATE_BASE_DIR = "/home/pherzog/Projects/Python/small/templates"
+DEFAULT_TEMPLATE_NAME = "DEFAULT"
 
 RESERVED_WORDS = [
     'and', 'as', 'assert', 
@@ -137,7 +138,8 @@ def did_build_target(target_path: str) -> bool:
     return True
 
 def template_path(template_name: str) -> str:
-    template_path = TEMPLATE_PATH_DIR
+    template = DEFAULT_TEMPLATE_NAME if template_name == "" else template_name
+    template_path = os.path.join(TEMPLATE_BASE_DIR, template)
     return template_path
 
 def reify_template(template_path: str, target_path: str) -> bool:
@@ -145,7 +147,8 @@ def reify_template(template_path: str, target_path: str) -> bool:
 
 def clean_base_name(name: str) -> str:
     # replace whitespace and non-ascii chars with '_'
-    # if leading character is not A-Z,a-z,_ prepend('Z_')
+    # if leading character is not A-Z,a-z,_ prepend('_')
+    # if name is a reserved word, prepend '_'
     base_name = name.strip()
     if base_name in RESERVED_WORDS:
         base_name = '_' + base_name
@@ -154,23 +157,56 @@ def clean_base_name(name: str) -> str:
         return base_name
 
     result = []
+    first = True
     for c in base_name:
         new_c = '_'
         if c.isalnum() or c == '_':
             new_c = c
+        if first:
+            first = False
+            if not c.isalpha():
+                result.append('_')
         result.append(new_c)
     return ''.join(result)
+
+def handle_file(file_path: str):
+    print(f"   {file_path}")
+
+def handle_dir(dir_path: str):
+    print(f"{dir_path}")
+
+def did_process_template(template_name: str, from_path: str) -> bool:
+    nfiles = 0
+    ndirs = 1
+    result = True
+    for root, dirs, files in os.walk(from_path):
+        for filename in files:
+            nfiles = nfiles + 1
+            handle_file(os.path.join(root, filename))
+        for dirname in dirs:
+            ndirs = ndirs + 1
+            handle_dir(os.path.join(root, dirname))
+
+    if nfiles == 0:
+        print()
+        print(f"No files found for template '{template_name}'")
+        result = False
+    else:
+        files_msg = "files" if nfiles != 1 else "file"
+        dirs_msg = "directories" if ndirs != 1 else "directory"
+        print()
+        print(f"Template '{template_name}' provided {nfiles} {files_msg} in {ndirs} {dirs_msg}")
+    return result
 
 def small():
     cwd = os.getcwd()
     cwd_name = PurePath(cwd).name
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("base_name", nargs='?', help="Base name for project - defaults to current directory name", default=cwd_name)
-
+    arg_parser.add_argument("--template_name", "-t", help="Template name", default="")
     args = arg_parser.parse_args()
-    # print(f"base_name: {args.base_name}")
-
     base_name = clean_base_name(args.base_name)
+    template_name = args.template_name.strip()
 
     target_path = get_target_path(cwd, base_name)
     target_prepared = did_build_target(target_path)
@@ -178,6 +214,14 @@ def small():
     if not target_prepared:
         print(f"'{target_path}' is not empty or is inaccessible")
         os._exit(1)
+
+    from_path = template_path(template_name)
+    if template_name == "":
+        template_name = DEFAULT_TEMPLATE_NAME
+    if did_process_template(template_name, from_path):
+        print(f"Done")
+    else:
+        os._exit(2)
 
 if __name__ == '__main__':
     small()
