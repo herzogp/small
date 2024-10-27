@@ -1,0 +1,36 @@
+[project]
+name = "[.BASE_NAME.]"
+version = "0.1.0"
+description = "[.BASE_DESC.]"
+license = {file = "LICENSE"}
+readme = "README.md"
+keywords = ["python", "project"]
+
+[tool.black]
+verbose = true
+
+[tool.mypy]
+files = "src/*.py"
+
+[tool.pylint.messages_control]
+# disable = "C0114,C0115,C0116"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+
+# addx 10 17
+addx = "add:add"
+
+[.BASE_NAME.] = "[.BASE_NAME.]:[.BASE_NAME.]"
+
+# [tool.pydeploy]
+# exclude_libs = []
+
+
+

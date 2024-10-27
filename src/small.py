@@ -3,6 +3,26 @@ import os
 import sys
 from pathlib import PurePath
 
+TEMPLATE_PATH_DIR = "/home/pherzog/Projects/Python/small/templates/DEFAULT"
+
+RESERVED_WORDS = [
+    'and', 'as', 'assert', 
+    'break', 'class', 'continue',
+    'def', 'del',
+    'elif', 'else', 'except',
+    'False', 'finally', 'for', 'from',
+    'global',
+    'if', 'import', 'in', 'is',
+    'lambda',
+    'None', 'nonlocal', 'not',
+    'or',
+    'pass',
+    'raise', 'return',
+    'True', 'try',
+    'while', 'with',
+    'yield'
+]
+
 # from colors import COLOR_CYAN, print_color, COLOR_YELLOW, COLOR_ENDC, COLOR_RED
 
 COLOR_ON_BLUE = "\033[44m"
@@ -92,7 +112,7 @@ STYLE_DARK = "\033[2m"
 #     "white": 97,
 # }
 
-def did_build_target(cwd: str, proj_name: str) -> bool:
+def get_target_path(cwd: str, proj_name: str) -> str:
     cwd_name = PurePath(cwd).name
     if cwd_name == proj_name:
         target_path = cwd
@@ -102,18 +122,44 @@ def did_build_target(cwd: str, proj_name: str) -> bool:
     if not os.path.isdir(target_path):
         os.mkdir(target_path) 
         print(f"Created '{target_path}'") 
-  
-    # make sure target_path exists and is empty
+    return target_path
+
+def did_build_target(target_path: str) -> bool:
+    """make sure target_path exists and is empty"""
     if not os.path.isdir(target_path):
-        print(f"target directory not accessible: '{target_path}'")
+        # print(f"target directory not accessible: '{target_path}'")
         return False
 
     nx = len(os.listdir(target_path))
     if nx > 0:
-        print(f"target directory is not empty: '{target_path}'")
+        # print(f"target directory is not empty: '{target_path}'")
         return False
     return True
 
+def template_path(template_name: str) -> str:
+    template_path = TEMPLATE_PATH_DIR
+    return template_path
+
+def reify_template(template_path: str, target_path: str) -> bool:
+    pass
+
+def clean_base_name(name: str) -> str:
+    # replace whitespace and non-ascii chars with '_'
+    # if leading character is not A-Z,a-z,_ prepend('Z_')
+    base_name = name.strip()
+    if base_name in RESERVED_WORDS:
+        base_name = '_' + base_name
+
+    if base_name.isidentifier():
+        return base_name
+
+    result = []
+    for c in base_name:
+        new_c = '_'
+        if c.isalnum() or c == '_':
+            new_c = c
+        result.append(new_c)
+    return ''.join(result)
 
 def small():
     cwd = os.getcwd()
@@ -124,13 +170,14 @@ def small():
     args = arg_parser.parse_args()
     # print(f"base_name: {args.base_name}")
 
-    target_prepared = did_build_target(cwd, args.base_name)
-    if target_prepared:
-        print(f"target '{args.base_name}' is prepared")
-    else:
-        os._exit(1)
-    print("Did not exit")
+    base_name = clean_base_name(args.base_name)
 
+    target_path = get_target_path(cwd, base_name)
+    target_prepared = did_build_target(target_path)
+
+    if not target_prepared:
+        print(f"'{target_path}' is not empty or is inaccessible")
+        os._exit(1)
 
 if __name__ == '__main__':
     small()
