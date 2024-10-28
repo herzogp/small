@@ -1,22 +1,24 @@
-# Make Small
+# small
 
-## mksmall cli
+## small cli
 
-    $ python mksmall.py base_name
-
-argparse
-
-args.base_name
+    $ python small.py base_name
 
 
 ## example
 
-    $ python mksmall.py readcat
+    $ python small.py readcat
 
-## underlying actions
+## template parameters
+BASE_NAME
+BASE_DESC
+OWNER
+YEAR
+$replace('=', text or parameter)
 
-    $ mkdir args.base_name
-    $ cd args.base_name
+Example: 
+$replace('*', BASE_NAME)
+BASE_NAME is evaluated, and each character in its value is replaced with '*'
 
 ## file .gitignore
 ```
@@ -36,13 +38,13 @@ let
   pkgs = import <nixpkgs> {};
 in pkgs.mkShell {
   packages = [
-    pkgs.python3
-    (pkgs.python3.withPackages (ps: with ps; [
+    pkgs.python312
+    (pkgs.python312.withPackages (ps: with ps; [
       black
       build
       mypy
       pdoc
-      pip
+      # pip
       pylint
       pytest
       setuptools
@@ -55,18 +57,16 @@ in pkgs.mkShell {
 ```
 let
   pkgs = import <nixpkgs> {};
-  sdk_version = (builtins.fromTOML(builtins.readFile( ./pyproject.toml))).project.version;
+  pkg_version = (builtins.fromTOML(builtins.readFile( ./pyproject.toml))).project.version;
 in
   with pkgs;
-  python3.pkgs.buildPythonPackage {
+  python312.pkgs.buildPythonPackage {
     pname = "antithesis-sdk-python";
-    version = sdk_version;
+    version = pkg_version;
     format = "pyproject";
     src = ./.;
-    propagatedBuildInputs = with python3.pkgs; [
+    propagatedBuildInputs = with python312.pkgs; [
       setuptools
-      cython
-      cffi
     ];
   }
 ```
@@ -75,7 +75,7 @@ in
 ```
 MIT License
 
-Copyright (c) ${this_year} ${args.org}
+Copyright (c) [.YEAR.] [.OWNER.]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -98,8 +98,8 @@ SOFTWARE.
 
 ## file README.md
 ```
-${args.base_name}
-================= '=' * len(args.base_name)
+[.BASE_NAME.]
+[$replace('=', BASE_NAME)]
 
 Start a development shell to install build tools to the working environment:
 
@@ -146,15 +146,15 @@ To view docs:
 
 To smoke-test:
 
-		$ ./result/bin/${args.base_name}
+		$ ./result/bin/[.BASE_NAME.]
 ```
 
 ## pyproject.toml
 ```
 [project]
-name = "${args.base_name}"
+name = "[.BASE_NAME.]"
 version = "0.1.0"
-description = "${args.desc}"
+description = "[.BASE_DESC.]"
 license = {file = "LICENSE"}
 readme = "README.md"
 
@@ -175,6 +175,6 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-${args.base_name} = "${args.base_name}:${args.base_name}"
+[.BASE_NAME.] = "[.BASE_NAME.]:[.BASE_NAME.]"
 ```
 
