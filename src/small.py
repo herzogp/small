@@ -169,20 +169,43 @@ def clean_base_name(name: str) -> str:
         result.append(new_c)
     return ''.join(result)
 
-def handle_file(file_path: str):
-    print(f"   {file_path}")
+def readlines(fname: str, verbose=False) -> list[str]:
+    all_lines = []
+    with open(fname) as f:
+        for line in f:
+            if verbose:
+                print(line, end="")
+            all_lines.append(line)
+    return all_lines
+
+def handle_file(file_path: str, dest_path: str):
+    lx = len(file_path)
+    lx2 = len(dest_path) + 4
+    ndashes = lx if lx > lx2 else lx2
+    dashes = '-' * (2 + ndashes)
+    print(dashes)
+    print(f"{file_path}")
+    print(f"==> {dest_path}")
+    print(dashes)
+    lines = readlines(file_path) #, True)
+    print()
 
 def handle_dir(dir_path: str):
-    print(f"{dir_path}")
+    # print(f"{dir_path}")
+    pass
 
-def did_process_template(template_name: str, from_path: str) -> bool:
+def did_process_template(template_name: str, from_path: str, to_path: str) -> bool:
     nfiles = 0
     ndirs = 1
     result = True
     for root, dirs, files in os.walk(from_path):
         for filename in files:
             nfiles = nfiles + 1
-            handle_file(os.path.join(root, filename))
+            rel_ref = os.path.relpath(filename, from_path)
+            print(f"{rel_ref = }")
+            print(f"{from_path = }")
+            dest_path = os.path.join(to_path,rel_ref)
+            handle_file(os.path.join(root, filename), dest_path)
         for dirname in dirs:
             ndirs = ndirs + 1
             handle_dir(os.path.join(root, dirname))
@@ -218,7 +241,7 @@ def small():
     from_path = template_path(template_name)
     if template_name == "":
         template_name = DEFAULT_TEMPLATE_NAME
-    if did_process_template(template_name, from_path):
+    if did_process_template(template_name, from_path, target_path):
         print(f"Done")
     else:
         os._exit(2)
