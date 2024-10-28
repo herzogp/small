@@ -1,7 +1,10 @@
 import argparse
+import datetime
 import os
 import sys
-from pathlib import PurePath
+from pathlib import Path
+
+global_base_name = ""
 
 TEMPLATE_BASE_DIR = "/home/pherzog/Projects/Python/small/templates"
 DEFAULT_TEMPLATE_NAME = "DEFAULT"
@@ -113,8 +116,87 @@ STYLE_DARK = "\033[2m"
 #     "white": 97,
 # }
 
+class TextReplacer():
+    def __init__(self, base_name: str, base_desc: str, owner: str):
+        today = datetime.date.today()
+        self._year = str(today.year)
+        self._owner = owner
+        self._base_desc = base_desc
+        self._base_name = base_name
+
+    @property
+    def base_name(self) -> str:
+        return self._base_name
+
+    @property
+    def base_desc(self) -> str:
+        return self._base_desc
+
+    @property
+    def year(self) -> str:
+        return self._year
+
+    @property
+    def owner(self) -> str:
+        return self._owner
+
+    def resolve_text(self, expr) -> str:
+        if expr == 'BASE_NAME':
+            return self.base_name
+        elif expr == 'BASE_DESC':
+            return self.base_desc
+        elif expr == 'YEAR':
+            return self.year
+        elif expr == 'OWNER':
+            return self.owner
+        else:
+            return None
+    
+    def resolve_expr(self, expr: str)-> str:
+        resolved_text = self.resolve_text(expr)
+        if resolved_text != None:
+            return resolved_text
+
+        # $replace('=', BASE_NAME)
+        if expr.startswith("$replace"):
+            paren_expr = expr[8:].strip()
+            lx = len(paren_expr)
+            if paren_expr.startswith("(") and paren_expr.endswith(")"):
+                arg_expr = paren_expr[1:lx]
+                all_args = arg_expr.split(',')
+                if len(all_args) == 2:
+                    arg_0 = all_args[0].strip()
+                    arg_1 = all_args[1].strip()
+                    arg_value = self.resolve_text(arg_1)
+                    len_val = len(arg_1) if arg_value is None else len(arg_value)
+                    result = arg_0[1] * len_val
+                    return result
+        return ""
+    
+    def rep_string(self, s: str) -> str:
+        idx_start = s.find("[.")
+        if idx_start == -1:
+            return s
+        idx_end = s.find(".]", idx_start + 2)
+        if idx_end == -1:
+            return s
+        src_expr = s[idx_start + 2 : idx_end].strip()
+        text = self.resolve_expr(src_expr)
+        before_text = s[0:idx_start]
+        after_text = s[idx_end+2:] # TODO: why +2, and not -1 ???
+        return before_text + text + after_text
+   
+    def replace_string(self, s: str) -> str:
+        done = False
+        while not done:
+            new_s = self.rep_string(s)
+            if new_s == s:
+                done = True
+            s = new_s
+        return s
+
 def get_target_path(cwd: str, proj_name: str) -> str:
-    cwd_name = PurePath(cwd).name
+    cwd_name = Path(cwd).name
     if cwd_name == proj_name:
         target_path = cwd
     else:
@@ -145,6 +227,7 @@ def template_path(template_name: str) -> str:
 def reify_template(template_path: str, target_path: str) -> bool:
     pass
 
+
 def clean_base_name(name: str) -> str:
     # replace whitespace and non-ascii chars with '_'
     # if leading character is not A-Z,a-z,_ prepend('_')
@@ -169,16 +252,17 @@ def clean_base_name(name: str) -> str:
         result.append(new_c)
     return ''.join(result)
 
-def readlines(fname: str, verbose=False) -> list[str]:
+def readlines(replacer: TextReplacer, fname: str, verbose=False) -> list[str]:
     all_lines = []
     with open(fname) as f:
         for line in f:
+            use_line = replacer.replace_string(line)
             if verbose:
-                print(line, end="")
-            all_lines.append(line)
+                print(use_line, end="")
+            all_lines.append(use_line)
     return all_lines
 
-def handle_file(file_path: str, dest_path: str):
+def handle_file(replacer: TextReplacer, file_path: str, dest_path: str):
     lx = len(file_path)
     lx2 = len(dest_path) + 4
     ndashes = lx if lx > lx2 else lx2
@@ -187,28 +271,51 @@ def handle_file(file_path: str, dest_path: str):
     print(f"{file_path}")
     print(f"==> {dest_path}")
     print(dashes)
-    lines = readlines(file_path) #, True)
+    lines = readlines(replacer, file_path, True)
     print()
 
 def handle_dir(dir_path: str):
-    # print(f"{dir_path}")
-    pass
+    os.mkdir(dir_path) 
 
-def did_process_template(template_name: str, from_path: str, to_path: str) -> bool:
+
+# source_file = /home/pherzog/Projects/Python/small/templates/DEFAULT/src/add.py
+# created by os.path(template_path, filename)
+# subtract the template_base from here, to get this:
+# src/add.py
+#
+# target_path := /home/pherzog/Projects/Python/small/large
+# template_path := /home/pherzog/Projects/Python/small/templates/DEFAULT
+# compose a path with (target_path, "src/add.py")
+
+# rel_ref = '../../add.py'
+# from_path = '/home/pherzog/Projects/Python/small/templates/DEFAULT'
+# ------------------------------------------------------------------
+# /home/pherzog/Projects/Python/small/templates/DEFAULT/src/add.py
+# ==> /home/pherzog/Projects/Python/small/large/../../add.py
+# ------------------------------------------------------------------
+
+def did_process_template(replacer: TextReplacer, template_name: str, from_path: str, to_path: str) -> bool:
     nfiles = 0
     ndirs = 1
     result = True
     for root, dirs, files in os.walk(from_path):
+        rel_ref2 = os.path.relpath(root, from_path) # src, .
         for filename in files:
             nfiles = nfiles + 1
-            rel_ref = os.path.relpath(filename, from_path)
-            print(f"{rel_ref = }")
-            print(f"{from_path = }")
-            dest_path = os.path.join(to_path,rel_ref)
-            handle_file(os.path.join(root, filename), dest_path)
+            final_filename = replacer.replace_string(filename)
+            if filename != final_filename:
+                print(f"{final_filename = }")
+
+            dest_path = os.path.join(to_path,rel_ref2)
+
+            file_to_read = os.path.join(root, filename)
+            file_to_write = os.path.join(dest_path, final_filename)
+            handle_file(replacer, file_to_read, file_to_write)
         for dirname in dirs:
             ndirs = ndirs + 1
-            handle_dir(os.path.join(root, dirname))
+            dest_dir = os.path.join(to_path, rel_ref2)
+            dir_to_create = Path(os.path.join(dest_dir, dirname)).resolve()
+            handle_dir(dir_to_create)
 
     if nfiles == 0:
         print()
@@ -223,15 +330,19 @@ def did_process_template(template_name: str, from_path: str, to_path: str) -> bo
 
 def small():
     cwd = os.getcwd()
-    cwd_name = PurePath(cwd).name
+    cwd_name = Path(cwd).name
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("base_name", nargs='?', help="Base name for project - defaults to current directory name", default=cwd_name)
     arg_parser.add_argument("--template_name", "-t", help="Template name", default="")
+    arg_parser.add_argument("--owner", "-o", help="Source code owner", default="author")
+    arg_parser.add_argument("--description", "-d", help="Project description", default="Project description")
     args = arg_parser.parse_args()
-    base_name = clean_base_name(args.base_name)
+    this_base_name = clean_base_name(args.base_name)
+    this_desc = args.description
+    this_owner = args.owner
     template_name = args.template_name.strip()
 
-    target_path = get_target_path(cwd, base_name)
+    target_path = get_target_path(cwd, this_base_name)
     target_prepared = did_build_target(target_path)
 
     if not target_prepared:
@@ -241,7 +352,8 @@ def small():
     from_path = template_path(template_name)
     if template_name == "":
         template_name = DEFAULT_TEMPLATE_NAME
-    if did_process_template(template_name, from_path, target_path):
+    replacer = TextReplacer(this_base_name, this_desc, this_owner)
+    if did_process_template(replacer, template_name, from_path, target_path):
         print(f"Done")
     else:
         os._exit(2)
