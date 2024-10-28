@@ -10,15 +10,18 @@
     $ python small.py readcat
 
 ## template parameters
-BASE_NAME
-BASE_DESC
-OWNER
-YEAR
-$replace('=', text or parameter)
 
-Example: 
-$replace('*', BASE_NAME)
-BASE_NAME is evaluated, and each character in its value is replaced with '*'
+- BASE_NAME  
+- BASE_DESC  
+- OWNER  
+- YEAR  
+- $replace('=', text or parameter)  
+
+Example:  
+
+    $replace('*', BASE_NAME)
+  
+`BASE_NAME` is evaluated, and each character in its value is replaced with `'*'`
 
 ## file .gitignore
 ```
