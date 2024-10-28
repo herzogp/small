@@ -116,7 +116,7 @@ class TextReplacer():
             paren_expr = expr[8:].strip()
             lx = len(paren_expr)
             if paren_expr.startswith("(") and paren_expr.endswith(")"):
-                arg_expr = paren_expr[1:lx]
+                arg_expr = paren_expr[1:lx-1]
                 all_args = arg_expr.split(',')
                 if len(all_args) == 2:
                     arg_0 = all_args[0].strip()
@@ -134,10 +134,11 @@ class TextReplacer():
         idx_end = s.find(".]", idx_start + 2)
         if idx_end == -1:
             return s
+        print(f"s='{s}'  {idx_start = }  {idx_end = }")
         src_expr = s[idx_start + 2 : idx_end].strip()
         text = self.resolve_expr(src_expr)
         before_text = s[0:idx_start]
-        after_text = s[idx_end+2:] # TODO: why +2, and not -1 ???
+        after_text = s[idx_end+2:]
         return before_text + text + after_text
    
     def replace_string(self, s: str) -> str:
