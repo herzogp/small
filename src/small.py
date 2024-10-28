@@ -4,8 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-global_base_name = ""
-
+# TODO: Should be part of the binary dist for 'small'
 TEMPLATE_BASE_DIR = "/home/pherzog/Projects/Python/small/templates"
 DEFAULT_TEMPLATE_NAME = "DEFAULT"
 
@@ -27,6 +26,7 @@ RESERVED_WORDS = [
     'yield'
 ]
 
+# TODO: Use colors for output
 # from colors import COLOR_CYAN, print_color, COLOR_YELLOW, COLOR_ENDC, COLOR_RED
 
 COLOR_ON_BLUE = "\033[44m"
@@ -49,53 +49,6 @@ STYLE_STRIKE = "\033[9m"
 STYLE_BOLD = "\033[1m"
 STYLE_DARK = "\033[2m"
 
-# class LineInfo():
-#     def __init__(self, lno: int):
-#         self._lno = lno
-# 
-#     @property
-#     def lno(self) -> int:
-#         return self._lno
-# 
-#     @lno.setter
-#     def lno(self, lno: int):
-#         self._lno = lno
-# 
-# def configure_line_writer(args):
-#     region_color = f"\033[;{args.region_color}m"
-#     def line_writer(line: str, info: LineInfo) -> bool:
-#         color = ""
-#         stripped_line = line.lstrip()
-#         if stripped_line.startswith('def '):
-#             color = region_color
-#         elif stripped_line.startswith('@'):
-#             color = STYLE_BOLD + COLOR_ON_BLUE + COLOR_BLACK
-#         if color == "":
-#             colored_line = line
-#         else:
-#             colored_line = f"{color}{line}{COLOR_ENDC}"
-#         numbered_line = f"{info.lno:4d} {colored_line}"
-#         print(numbered_line)
-#         return True
-#     return line_writer
-# 
-# def readlines(fname: str, writer) -> list[str]:
-#     all_lines = []
-#     with open(fname) as f:
-#         lno = 0
-#         line_info = LineInfo(lno)
-#         for line in f:
-#             just_line = line.rstrip()
-#             lno = lno + 1
-#             line_info.lno = lno
-#             writer(just_line, line_info)
-#             all_lines.append(just_line)
-#     return all_lines
-# 
-# def show_regions(args):
-#     lw = configure_line_writer(args)
-#     readlines(args.target_file, lw)
-# 
 # reg_colors = {
 #     "black": 30,
 #     "grey": 30,
@@ -115,6 +68,7 @@ STYLE_DARK = "\033[2m"
 #     "light_cyan": 96,
 #     "white": 97,
 # }
+# region_color = f"\033[;{reg_colors["magenta"]}m"
 
 class TextReplacer():
     def __init__(self, base_name: str, base_desc: str, owner: str):
@@ -252,14 +206,16 @@ def clean_base_name(name: str) -> str:
         result.append(new_c)
     return ''.join(result)
 
-def readlines(replacer: TextReplacer, fname: str, verbose=False) -> list[str]:
+def readlines(replacer: TextReplacer, fname: str, outname: str, verbose=False) -> list[str]:
     all_lines = []
     with open(fname) as f:
-        for line in f:
-            use_line = replacer.replace_string(line)
-            if verbose:
-                print(use_line, end="")
-            all_lines.append(use_line)
+        with open(outname, "w") as f_out:
+            for line in f:
+                use_line = replacer.replace_string(line)
+                if verbose:
+                    print(use_line, end="")
+                print(use_line, end="", file=f_out)
+                all_lines.append(use_line)
     return all_lines
 
 def handle_file(replacer: TextReplacer, file_path: str, dest_path: str):
@@ -271,28 +227,12 @@ def handle_file(replacer: TextReplacer, file_path: str, dest_path: str):
     print(f"{file_path}")
     print(f"==> {dest_path}")
     print(dashes)
-    lines = readlines(replacer, file_path, True)
+    lines = readlines(replacer, file_path, dest_path, True)
     print()
 
 def handle_dir(dir_path: str):
     os.mkdir(dir_path) 
 
-
-# source_file = /home/pherzog/Projects/Python/small/templates/DEFAULT/src/add.py
-# created by os.path(template_path, filename)
-# subtract the template_base from here, to get this:
-# src/add.py
-#
-# target_path := /home/pherzog/Projects/Python/small/large
-# template_path := /home/pherzog/Projects/Python/small/templates/DEFAULT
-# compose a path with (target_path, "src/add.py")
-
-# rel_ref = '../../add.py'
-# from_path = '/home/pherzog/Projects/Python/small/templates/DEFAULT'
-# ------------------------------------------------------------------
-# /home/pherzog/Projects/Python/small/templates/DEFAULT/src/add.py
-# ==> /home/pherzog/Projects/Python/small/large/../../add.py
-# ------------------------------------------------------------------
 
 def did_process_template(replacer: TextReplacer, template_name: str, from_path: str, to_path: str) -> bool:
     nfiles = 0
@@ -303,8 +243,6 @@ def did_process_template(replacer: TextReplacer, template_name: str, from_path: 
         for filename in files:
             nfiles = nfiles + 1
             final_filename = replacer.replace_string(filename)
-            if filename != final_filename:
-                print(f"{final_filename = }")
 
             dest_path = os.path.join(to_path,rel_ref2)
 
@@ -353,12 +291,8 @@ def small():
     if template_name == "":
         template_name = DEFAULT_TEMPLATE_NAME
     replacer = TextReplacer(this_base_name, this_desc, this_owner)
-    if did_process_template(replacer, template_name, from_path, target_path):
-        print(f"Done")
-    else:
+    if not did_process_template(replacer, template_name, from_path, target_path):
         os._exit(2)
 
 if __name__ == '__main__':
     small()
-
-
